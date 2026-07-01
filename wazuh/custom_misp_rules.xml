@@ -1,0 +1,81 @@
+<!--
+  Custom Wazuh rules for the MISP integration workshop.
+
+  Install on the Wazuh Manager as:
+    /var/ossec/etc/rules/custom-misp-rules.xml
+  (or via the Dashboard: Server Management -> Rules -> Add new rule file)
+
+  Then restart the manager:
+    sudo systemctl restart wazuh-manager
+
+  Rule id ranges 100000+ are reserved for user rules. See TUTORIAL.md sections
+  2.3 and 4 for how each group is used.
+-->
+
+<!-- Decode Suricata eve.json events so they can be routed to the MISP integration -->
+<group name="suricata,">
+  <rule id="100710" level="3">
+    <if_sid>86603</if_sid>
+    <field name="dns.rrname">\.+</field>
+    <description>Suricata DNS query - $(dns.rrname)</description>
+    <options>no_full_log</options>
+    <group>suricata_dns,</group>
+  </rule>
+  <rule id="100711" level="3">
+    <if_sid>86600</if_sid>
+    <field name="dest_ip">\.+</field>
+    <description>Suricata connection - dst $(dest_ip)</description>
+    <options>no_full_log</options>
+    <group>suricata_conn,</group>
+  </rule>
+</group>
+
+<!-- Alerts produced when the custom-misp.py integration finds an IoC in MISP -->
+<group name="misp,">
+  <rule id="100620" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="integration">misp</field>
+    <description>Default rule for MISP Events</description>
+    <!--options>no_full_log</options-->
+  </rule>
+  <rule id="100621" level="12">
+    <if_sid>100620</if_sid>
+    <field name="threat">MISP error</field>
+    <description>MISP error</description>
+  </rule>
+  <rule id="100622" level="12">
+    <if_sid>100620</if_sid>
+    <field name="ioc.domain">\.+</field>
+    <description>MISP - IoC found in Threat Intel - Attribute: domain $(ioc.domain) - Event: $(misp_response.domain.event_info)</description>
+  </rule>
+  <rule id="100623" level="12">
+    <if_sid>100620</if_sid>
+    <field name="ioc.sha256">\.+</field>
+    <description>MISP - IoC found in Threat Intel - Attribute: hash $(ioc.sha256) - Event: $(misp_response.sha256.event_info)</description>
+  </rule>
+  <rule id="100624" level="12">
+    <if_sid>100620</if_sid>
+    <field name="ioc.sha1">\.+</field>
+    <description>MISP - IoC found in Threat Intel - Attribute: hash $(ioc.sha1) - Event: $(misp_response.sha1.event_info)</description>
+  </rule>
+  <rule id="100625" level="12">
+    <if_sid>100620</if_sid>
+    <field name="ioc.ip_dst">\.+</field>
+    <description>MISP - IoC found in Threat Intel - Attribute: ip-dst $(ioc.ip_dst) - Event: $(misp_response.ip_dst.event_info)</description>
+  </rule>
+  <rule id="100626" level="12">
+    <if_sid>100620</if_sid>
+    <field name="ioc.ip_src">\.+</field>
+    <description>MISP - IoC found in Threat Intel - Attribute: ip-src $(ioc.ip_src) - Event: $(misp_response.ip_src.event_info)</description>
+  </rule>
+</group>
+
+<!-- High-severity alert when Suricata matches an IP from the MISP dataset (misp.rules) -->
+<group name="suricata,misp,">
+  <rule id="100730" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">^1000001$|^1000002$</field>
+    <description>MISP IOC match (Suricata) - $(alert.signature): $(src_ip) -> $(dest_ip)</description>
+    <group>suricata_misp,</group>
+  </rule>
+</group>

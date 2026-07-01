@@ -1,0 +1,41 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+**/.venv/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment / secrets
+.env
+*.env
+keys.py
+secrets.py
+
+# VM images / large binaries
+*.ova
+*.ovf
+*.vmdk
+*.iso
+*.qcow2
+
+# Generated data / exports
+*.csv
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

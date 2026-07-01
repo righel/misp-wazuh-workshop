@@ -1,0 +1,14 @@
+# MISP IOC rules for Suricata
+#
+# These rules match traffic against the `misp-iocs-ips` dataset, which is
+# populated by export_suricata.py and declared in suricata.yaml:
+#
+#   datasets:
+#     misp-iocs-ips:
+#       type: ip
+#       load: /var/lib/suricata/rules/misp-iocs-ips.lst
+#
+# Local/user rule sids must be >= 1000000.
+
+alert ip any any -> any any (msg:"MISP IOC - malicious destination IP"; ip.dst; dataset:isset,misp-iocs-ips; classtype:misc-attack; sid:1000001; rev:1;)
+alert ip any any -> any any (msg:"MISP IOC - malicious source IP"; ip.src; dataset:isset,misp-iocs-ips; classtype:misc-attack; sid:1000002; rev:1;)
