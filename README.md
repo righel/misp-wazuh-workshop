@@ -17,18 +17,19 @@ or domain matches a known IOC.
 
 ## Lab layout
 
-The lab runs three VirtualBox VMs on a host-only network (`vboxnet0`):
+The lab runs four VirtualBox VMs on a host-only network (`vboxnet0`):
 
 ```
 192.168.56.1    the host itself (VirtualBox assigns this to vboxnet0)
 192.168.56.10   wazuh-manager VM
 192.168.56.20   wazuh-agent-01 VM
 192.168.56.30   misp VM
+192.168.56.50   flowintel VM
 ```
 
 ## Getting started
 
-Download the pre-configured `.ova` file containing the 3 VMs **<TODO_INSERT_OVA_LINK>**.
+Download the pre-configured `.ova` file containing the 4 VMs **<TODO_INSERT_OVA_LINK>**.
 
 The lab is distributed as a pre-configured `.ova` image, so you can go straight to the
 walkthrough. If you'd rather build everything from scratch, follow the installation guide

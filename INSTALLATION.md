@@ -14,6 +14,7 @@
 192.168.56.10   wazuh-manager VM
 192.168.56.20   wazuh-agent-01 VM
 192.168.56.30   misp docker
+192.168.56.50   flowintel VM
 ```
 
 ## 0 - Host-only network (do this once)
@@ -73,6 +74,7 @@ PermitRootLogin yes
 
 Restart ssh:
 ```bash
+ssh-keygen -A
 systemctl restart ssh
 ```
 
@@ -105,6 +107,13 @@ Apply configuration:
 chmod 600 /etc/netplan/99-lab.yaml
 netplan apply
 ip a show enp0s8            # confirm 192.168.56.30
+```
+
+Resize VM volume:
+```bash
+TMPDIR=/dev/shm growpart /dev/sda 1
+resize2fs /dev/sda1
+df -h /                       # confirm / is now larger
 ```
 
 ### 1.3 - Installing `misp-docker`
@@ -248,6 +257,7 @@ PermitRootLogin yes
 
 Restart ssh:
 ```bash
+ssh-keygen -A
 systemctl restart ssh
 ```
 
@@ -256,16 +266,16 @@ Change hostname to `wazuh-agent-01`:
 echo "wazuh-agent-01" > /etc/hostname
 ```
 
-Cofigure static IP address:
-
-```bash
-root@ubuntu:~# vim /etc/netplan/99-lab.yaml
-```
-
 Attach Host-only interface:
 ```bash
 $ VBoxManage modifyvm "wazuh-agent-01" --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
+
+Cofigure static IP address:
+```bash
+root@ubuntu:~# vim /etc/netplan/99-lab.yaml
+```
+
 
 Write the following configuration:
 ```yaml
@@ -362,3 +372,148 @@ sudo chmod 750 /var/ossec/integrations/custom-misp.py
 sudo mkdir -p /var/log/wazuh-misp
 sudo chown wazuh:wazuh /var/log/wazuh-misp
 ```
+
+
+## 5 - Flowintel VM
+
+[Flowintel](https://github.com/flowintel/flowintel) is the collaborative case-management
+tool used for incident triage in the [Log4Shell scenario](LOG4SHELL.md) (Stage 4). It runs
+on its own VM at `192.168.56.50`, reachable at `http://192.168.56.50`.
+
+```bash
+sudo virt-customize -a /home/lucho/VirtualBox\ VMs/flowintel/ubuntu-noble-24.04-cloudimg.vdi \
+      --root-password password:root \
+      --run-command 'usermod -U root'
+```
+
+Resize VM volume:
+```bash
+TMPDIR=/dev/shm growpart /dev/sda 1
+resize2fs /dev/sda1
+df -h /                       # confirm / is now larger
+```
+
+Attach Host-only interface:
+```bash
+$ VBoxManage modifyvm "flowintel" --nic2 hostonly --hostonlyadapter2 vboxnet0
+```
+
+Log in into the VM with root/root.
+
+Change hostname to `flowintel`:
+```bash
+echo "flowintel" > /etc/hostname
+```
+
+Configure ssh:
+
+```bash
+# vim /etc/ssh/sshd_config.d/99-enable-pw.conf
+```
+Add:
+```
+PasswordAuthentication yes
+PermitRootLogin yes
+```
+
+Restart ssh:
+```bash
+ssh-keygen -A
+systemctl restart ssh
+```
+
+Cofigure static IP address:
+```bash
+root@ubuntu:~# vim /etc/netplan/99-lab.yaml
+```
+
+Write the following configuration:
+```yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:                 # NAT — internet
+      dhcp4: true
+    enp0s8:                 # host-only — lab traffic
+      dhcp4: false
+      addresses:
+        - 192.168.56.50/24
+```
+
+Apply configuration:
+```bash
+chmod 600 /etc/netplan/99-lab.yaml
+netplan apply
+ip a show enp0s8            # confirm 192.168.56.50
+```
+
+Install and configure Flowintel:
+```bash
+apt update
+apt install git
+git clone https://github.com/flowintel/flowintel.git
+cd flowintel
+cp conf/config.py.default conf/config.py
+cp conf/config_module.py.default conf/config_module.py
+```
+
+```bash
+vim conf/config.py
+```
+
+Set the webserver IP and port:
+```python
+FLASK_URL = "192.168.56.50"
+FLASK_PORT = "80"
+```
+
+Launch the application manually (to confirm it works before enabling the service):
+```bash
+./launch.sh -l
+```
+
+Go to http://192.168.56.50
+
+```
+email: admin@admin.admin
+password: admin
+```
+
+### Run Flowintel at boot
+
+`launch.sh -l` runs the Flask app in the foreground (starting the FCM and misp-modules
+helpers in detached `screen` sessions), so a simple systemd service can supervise it and
+start it automatically when the VM boots. Stop the manual run (`Ctrl+C`) first, then create
+the unit:
+
+```bash
+# vim /etc/systemd/system/flowintel.service
+```
+
+```ini
+[Unit]
+Description=Flowintel case-management web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/flowintel
+ExecStart=/bin/bash /root/flowintel/launch.sh -l
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable it so it starts now and on every boot:
+```bash
+systemctl daemon-reload
+systemctl enable --now flowintel
+systemctl status flowintel --no-pager     # confirm it is active (running)
+```
+
+After a reboot, Flowintel comes back up on its own at http://192.168.56.50. Logs are
+available via `journalctl -u flowintel -f`.

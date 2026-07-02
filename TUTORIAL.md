@@ -32,6 +32,7 @@ Part 1 sets up and explores MISP; Part 2 deploys Wazuh and wires the two togethe
 192.168.56.10   wazuh-manager VM
 192.168.56.20   wazuh-agent-01 VM
 192.168.56.30   misp docker
+192.168.56.50   flowintel VM
 ```
 
 ## Using lab `.ova`

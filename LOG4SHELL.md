@@ -126,7 +126,9 @@ Open the Wazuh alert, confirm the MISP match, and pivot to the linked event to r
 community's write-up. Now capture the investigation somewhere durable:
 [Flowintel](https://github.com/flowintel/flowintel) is a collaborative case-management tool
 for incident response — think of it as the ticket that tracks this incident from first alert
-to closure.
+to closure. In this lab it runs on its own VM, reachable at `http://192.168.56.50`
+(default login `admin@admin.admin` / `admin`; see [INSTALLATION.md](INSTALLATION.md) §5 if
+you built the lab from scratch).
 
 Open a Flowintel case containing:
 
