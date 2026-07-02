@@ -46,7 +46,7 @@
   <rule id="100622" level="12">
     <if_sid>100620</if_sid>
     <field name="ioc.domain">\.+</field>
-    <description>MISP - IoC found in Threat Intel - Attribute: domain $(ioc.domain) - Event: $(misp_response.domain.event_info)</description>
+    <description>MISP - IoC found in Threat Intel - Attribute: host $(ioc.domain) - Event: $(misp_response.domain.event_info)</description>
   </rule>
   <rule id="100623" level="12">
     <if_sid>100620</if_sid>

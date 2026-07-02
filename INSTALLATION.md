@@ -9,7 +9,7 @@
 
 ## Lab layout
 
-```
+```bash
 192.168.56.1    the host itself (VirtualBox assigns this to vboxnet0)
 192.168.56.10   wazuh-manager VM
 192.168.56.20   wazuh-agent-01 VM
@@ -18,7 +18,7 @@
 
 ## 0 - Host-only network (do this once)
 
-```
+```bash
 # Create the host-only network (gives you vboxnet0) and set the host's IP
 VBoxManage hostonlyif create
 VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.56.1 --netmask 255.255.255.0
@@ -49,12 +49,12 @@ You can download an Ubuntu Server 24.04 `.ova` from here:
 ### 1.2 - Networking
 
 Attach the two adapters to the `misp` VM (powered off):
-```
+```bash
 $ VBoxManage modifyvm "misp" --nic1 nat --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
 
 Set `root` password:
-```
+```bash
 sudo virt-customize -a /home/lucho/VirtualBox\ VMs/misp/ubuntu-noble-24.04-cloudimg.vdi \
       --root-password password:root \
       --run-command 'usermod -U root'
@@ -62,7 +62,7 @@ sudo virt-customize -a /home/lucho/VirtualBox\ VMs/misp/ubuntu-noble-24.04-cloud
 
 Configure ssh:
 
-```
+```bash
 # vim /etc/ssh/sshd_config.d/99-enable-pw.conf
 ```
 Add:
@@ -72,23 +72,23 @@ PermitRootLogin yes
 ```
 
 Restart ssh:
-```
+```bash
 systemctl restart ssh
 ```
 
 Change hostname to `misp`:
-```
+```bash
 echo "misp" > /etc/hostname
 ```
 
 Cofigure static IP address:
 
-```
+```bash
 root@ubuntu:~# vim /etc/netplan/99-lab.yaml
 ```
 
 Write the following configuration:
-```
+```bash
 network:
   version: 2
   ethernets:
@@ -101,7 +101,7 @@ network:
 ```
 
 Apply configuration:
-```
+```bash
 chmod 600 /etc/netplan/99-lab.yaml
 netplan apply
 ip a show enp0s8            # confirm 192.168.56.30
@@ -114,18 +114,18 @@ ip a show enp0s8            # confirm 192.168.56.30
     * https://docs.docker.com/compose/install/linux/
 
 1. Grab just the compose file
-```
+```bash
 mkdir misp && cd misp
 
 curl -O https://raw.githubusercontent.com/MISP/misp-docker/refs/heads/master/docker-compose.yml
 ```
 2. Create your .env 
-```
+```bash
 curl -o .env https://raw.githubusercontent.com/MISP/misp-docker/refs/heads/master/template.env
 ```
 
 3. Edit .env (see below)
-```
+```bash
 vim .env
 
 BASE_URL=https://192.168.56.30
@@ -134,7 +134,7 @@ ADMIN_PASSWORD=...                 # or use the generated default
 ```
 
 4. PUll images and Start MISP
-```
+```bash
 docker compose pull
 docker compose up -d
 ```
@@ -162,12 +162,12 @@ Once the stack is up, MISP is reachable at `https://192.168.56.30`.
 ### 2.2 - Networking
 
 Attach the two adapters to the `wazuh-manager` VM (powered off):
-```
+```bash
 $ VBoxManage modifyvm "wazuh-manager" --nic1 nat --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
 
 Get interfaces mac addresses:
-```
+```bash
 $ VBoxManage showvminfo "wazuh-manager" | grep -i "host-only\|nic"
 NIC 1:                       MAC: 0800272778B9, Attachment: NAT, Cable connected: on, Trace: off (file: none), Type: 82545EM, Reported speed: 0 Mbps, Boot priority: 0, Promisc Policy: deny, Bandwidth group: none
 NIC 1 Settings:
@@ -176,14 +176,14 @@ NIC 2:                       MAC: 080027CE133C, Attachment: Host-only Interface 
 
 
 Delete exisiting eth0 conf:
-```
+```bash
 rm /etc/systemd/network/20-eth0.network
 ```
 
 Modify `nat` config to match the mac address of the NAT interface:
 
 `/etc/systemd/network/20-nat.network`: 
-```
+```conf
 [Match]
 MACAddress=08:00:27:27:78:B9
 
@@ -194,7 +194,7 @@ DHCP=yes
 Modify `hostonly` config to match the mac address of the Host-only interface:
 
 `/etc/systemd/network/20-hostonly.network`: 
-```
+```conf
 [Match]
 MACAddress=08:00:27:CE:13:3C
 
@@ -204,7 +204,7 @@ Address=192.168.56.10/24
 
 
 Restart the network service:
-```
+```bash
 sudo networkctl reload
 sudo networkctl reconfigure eth0 eth1     # or just: systemctl restart systemd-networkd
 ip -br addr                          # confirm 192.168.56.10 is now on the 08:00:27:ce:13:3c interface
@@ -222,7 +222,7 @@ Impor the appliance in Oracle Virtual Box following the same steps as before.
 ### 3.1 - Networking
 
 1. Set Ubuntu Server root password:
-    ```
+    ```bash
     $ sudo apt install libguestfs-tools -y
     ...
     $ sudo virt-customize -a /home/lucho/VirtualBox\ VMs/wazuh-agent-01/ubuntu-noble-24.04-cloudimg.vdi \
@@ -237,7 +237,7 @@ Impor the appliance in Oracle Virtual Box following the same steps as before.
     ```
 2. Configure ssh:
 
-```
+```bash
 # vim /etc/ssh/sshd_config.d/99-enable-pw.conf
 ```
 Add:
@@ -247,28 +247,28 @@ PermitRootLogin yes
 ```
 
 Restart ssh:
-```
+```bash
 systemctl restart ssh
 ```
 
 Change hostname to `wazuh-agent-01`:
-```
+```bash
 echo "wazuh-agent-01" > /etc/hostname
 ```
 
 Cofigure static IP address:
 
-```
+```bash
 root@ubuntu:~# vim /etc/netplan/99-lab.yaml
 ```
 
 Attach Host-only interface:
-```
+```bash
 $ VBoxManage modifyvm "wazuh-agent-01" --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
 
 Write the following configuration:
-```
+```yaml
 network:
   version: 2
   ethernets:
@@ -281,7 +281,7 @@ network:
 ```
 
 Apply configuration:
-```
+```bash
 chmod 600 /etc/netplan/99-lab.yaml
 netplan apply
 ip a show enp0s8            # confirm 192.168.56.20
@@ -290,20 +290,20 @@ ip a show enp0s8            # confirm 192.168.56.20
 ### 3.2 - Install the Wazuh Agent
 
 1. Login via ssh:
-```
+```bash
 # ssh root@192.168.56.20
 ...
 root@wazuh-agent-01:~#
-```
+```bash
 2. Install _Wazuh Agent_:
-```
+```bash
 apt-get install gnupg apt-transport-https
 curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee -a /etc/apt/sources.list.d/wazuh.list
 apt-get update
 ```
 
-```
+```bash
 WAZUH_MANAGER="192.168.56.10" apt-get install wazuh-agent
 ```
 
@@ -316,20 +316,49 @@ More info:
 
 ---
 
+Install `osquery`:
+
+1. Go to https://osquery.io/downloads/official and download the latest `osquery` version.
+
+2. Install `osquery`:
+  ```bash
+  $ chmod +x osquery_X.XX.X.linux_amd64.deb
+  $ dpkg -i chmod +x osquery_X.XX.X.linux_amd64.deb
+  ```
+
+3. To run `osquery` locally without a server:
+  ```bash
+  # osqueryi
+  Using a virtual database. Need help, type '.help'
+  osquery> 
+  ```
+
+Install `Yara`:
+1. Go to https://github.com/VirusTotal/yara/releases and download the latest `yara` version.
+```bash
+sudo curl -LO https://github.com/VirusTotal/yara/archive/refs/tags/vX.X.X.tar.gz
+sudo apt update
+sudo apt install -y make gcc autoconf libtool libssl-dev pkg-config jq
+sudo curl -LO https://github.com/VirusTotal/yara/archive/vX.X.X.tar.gz
+sudo tar -xvzf vX.X.X.tar.gz -C /usr/local/bin/ && rm -f vX.X.X.tar.gz
+cd /usr/local/bin/yara-X.X.X/
+sudo ./bootstrap.sh && sudo ./configure && sudo make && sudo make install && sudo make check
+```
+
 ## 4 - Wazuh <-> MISP integration script installation
 
 1. Pull the integration script into the Wazuh integrations directory
-```
+```bash
 sudo curl -fsSL https://raw.githubusercontent.com/wazuh/integrations/refs/heads/main/integrations/misp/custom-misp.py \
   -o /var/ossec/integrations/custom-misp.py
 ```
 2. Set ownership and permissions on the script
-```
+```bash
 sudo chown root:wazuh /var/ossec/integrations/custom-misp.py
 sudo chmod 750 /var/ossec/integrations/custom-misp.py
 ```
 3. Create the log directory the script writes to and hand it to wazuh
-```
+```bash
 sudo mkdir -p /var/log/wazuh-misp
 sudo chown wazuh:wazuh /var/log/wazuh-misp
 ```

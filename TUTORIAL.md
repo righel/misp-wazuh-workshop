@@ -38,7 +38,7 @@ Part 1 sets up and explores MISP; Part 2 deploys Wazuh and wires the two togethe
 
 Download `wazuh-misp-lab.ova` and run:
 
-```
+```bash
 VBoxManage hostonlyif create
 VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.56.1 --netmask 255.255.255.0
 VBoxManage dhcpserver remove --ifname vboxnet0 2>/dev/null || true
@@ -179,7 +179,7 @@ Select `Feed` for the _Type_ of task and _Fetch_ for the action, then you can se
 
 #### 1.5 - Enable new UI 
 First, enable the `enable_themes` setting.
-```
+```bash
 $ docker compose exec misp-core bash
 $ sudo -u www-data app/Console/cake admin setSetting MISP.enable_themes 1
 ```
@@ -540,7 +540,7 @@ print("\n".join(all_ips))
 ```
 
 Sample results:
-```
+```bash
 $ python get_iocs_csv.py 
 "146.103.116.11"
 "2.24.131.246"
@@ -687,7 +687,7 @@ pointed at the _Wazuh Manager_ (`192.168.56.10`). Just import and start it.
 > To change the IP address of the _Wazuh Manager_ after the agent installation, edit the `/var/ossec/etc/ossec.conf` configuration file.
 
 You can log into it via ssh if you need to inspect it:
-```
+```bash
 # ssh root@192.168.56.20
 ...
 root@wazuh-agent-01:~#
@@ -709,7 +709,7 @@ into Wazuh, which a dedicated rule turns into a high-severity _"IoC found"_ aler
 Wazuh detects the activity, and MISP decides whether that activity is known-malicious.
 
 Test connectivity from Wazuh to MISP, from the SSH session in the Wazuh VM, run:
-```
+```bash
 [wazuh-user@wazuh-server ~]$ curl -k -s -X GET https://<YOUR_MISP_HOST>/attributes/restSearch/value:test -H 'Content-Type: application/json' -H 'Authorization: <YOUR_MISP_AUTH_KEY>' -H 'Accept: application/json'
 {"response": {"Attribute": []}}
 ```
@@ -731,11 +731,11 @@ Add the MISP integration configuration block to the Wazuh Manager configuration 
 `<group>` element acts as a filter: only alerts tagged with that group are forwarded to
 the script, so we set it to `syscheck` to avoid pointless MISP lookups for unrelated
 events.
-```
+```bash
 vim /var/ossec/etc/ossec.conf
 ```
 
-```
+```xml
 <ossec_config>
     <integration>
     <name>custom-misp.py</name>
@@ -748,7 +748,7 @@ vim /var/ossec/etc/ossec.conf
 ```
 
 Restart Wazuh Manager:
-```
+```bash
 $ sudo systemctl restart wazuh-manager
 ```
 
@@ -756,7 +756,7 @@ Add custom MISP rules:
 
 Go to _Server Management_ -> _Rules_ > _Add New Rule file_. Name it `custom_misp_rules.xml`
 
-``` 
+```xml
 <group name="misp,">
   <rule id="100620" level="10">
     <decoded_as>json</decoded_as>
@@ -852,7 +852,7 @@ flow can run against the IPs and domains Suricata observes.
 
 Install Suricata on the Wazuh Agent VM:
 
-```
+```bash
 ssh root@192.168.56.20
 sudo apt update
 sudo apt install suricata -y
@@ -860,7 +860,7 @@ sudo systemctl stop suricata        # stop it while we configure
 ```
 
 Get the proper interface name to monitor:
-```
+```bash
 # ip route get 8.8.8.8
 8.8.8.8 via 10.0.2.2 dev enp0s3 src 10.0.2.15 uid 0 
     cache 
@@ -893,14 +893,14 @@ outputs:
 ```
 
 Get rules and start Suricata:
-```
+```bash
 sudo suricata-update              # pulls the ET Open ruleset
 sudo systemctl enable --now suricata
 sudo systemctl status suricata --no-pager
 ```
 
 Confirm it's writing events:
-```
+```bash
 sudo tail -f /var/log/suricata/eve.json
 # in another session: curl -s http://example.com > /dev/null
 # you should see dns and http/flow JSON lines appear with dest_ip and hostnames
@@ -912,7 +912,7 @@ Now feed eve.json to the Wazuh Agent. Add a localfile block to the agent's ossec
 sudo nano /var/ossec/etc/ossec.conf
 ```
 
-```
+```xml
 <localfile>
   <log_format>json</log_format>
   <location>/var/log/suricata/eve.json</location>
@@ -920,12 +920,12 @@ sudo nano /var/ossec/etc/ossec.conf
 ```
 
 Restart Wazuh Agent:
-```
+```bash
 sudo systemctl restart wazuh-agent
 ```
 
 Trigger traffic on the agent, then inspect a Suricata alert's JSON:
-```
+```bash
 sudo tail -f /var/ossec/logs/alerts/alerts.json
 ```
 
@@ -980,7 +980,7 @@ Extend `custom_misp_rules.xml` rules files in Wazuh:
   <rule id="100622" level="12">
     <if_sid>100620</if_sid>
     <field name="ioc.domain">\.+</field>
-    <description>MISP - IoC found in Threat Intel - Attribute: domain $(ioc.domain) - Event: $(misp_response.domain.event_info)</description>
+    <description>MISP - IoC found in Threat Intel - Attribute: host $(ioc.domain) - Event: $(misp_response.domain.event_info)</description>
   </rule>
   <rule id="100623" level="12">
     <if_sid>100620</if_sid>
@@ -1022,7 +1022,7 @@ Update the integration configuration in Wazuh Manager to process these new group
 ```
 
 Restart Wazuh manager:
-```
+```bash
 $ systemctl restart wazuh-manager
 ```
 
@@ -1031,7 +1031,7 @@ Done!
 Add a MISP Event with some network IOCs, for example an attribute of type domain `circl.lu`, and `185.194.93.14`. Check `To IDS` and publish the event.
 
 To test a malicious domain alert run inside the Wazuh Agent:
-```
+```bash
 # dig @8.8.8.8 circl.lu
 ```
 
@@ -1039,7 +1039,7 @@ To test a malicious domain alert run inside the Wazuh Agent:
 
 
 To test a malicious IP run inside the Wazuh Agent:
-```
+```bash
 curl -s https://circl.lu > /dev/null
 ```
 
@@ -1058,7 +1058,7 @@ tail -f /var/ossec/logs/alerts/alerts.log
 Enable _Integrator_ module logs:
 Open the `/var/ossec/etc/internal_options.conf` file and change the following configuration:
 
-```
+```ini
 # Integrator daemon debug (server, local or Unix agent)
 integrator.debug=2
 ```
@@ -1202,7 +1202,7 @@ python export_suricata.py /var/lib/suricata/rules/misp-iocs-ips.lst
 
 The output is just the IP values:
 
-```
+```bash
 $ cat /var/lib/suricata/rules/misp-iocs-ips.lst
 146.103.116.11
 2.24.131.246
