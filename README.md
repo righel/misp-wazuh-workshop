@@ -62,3 +62,9 @@ export MISP_URL="https://192.168.56.30"
 
 See [TUTORIAL.md §1.7](TUTORIAL.md) for setup (virtualenv, `pip install pymisp`) and sample
 output.
+
+## Acknowledgments
+
+Claude Opus 4.8 (Anthropic) assisted with the technical writing and helped articulate some
+of the concepts in this workshop. All technical content was reviewed and validated by the
+authors.
