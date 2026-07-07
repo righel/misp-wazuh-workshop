@@ -1,0 +1,11 @@
+<group name="zeek,ids,misp,">
+  <rule id="100900" level="0">
+    <description>Zeek alerts</description>
+    <options>no_full_log</options>
+  </rule>
+  <rule id="100908" level="12">
+    <if_sid>100900</if_sid>
+    <field name="seen_indicator">\.+</field>
+    <description>Zeek: MISP IOC Match $(seen_indicator) on connection from source host $(srcip) source port $(srcport) to destination host $(dstip) on port $(dstport)</description>
+  </rule>
+</group>

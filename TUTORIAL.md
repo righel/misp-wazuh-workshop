@@ -819,9 +819,6 @@ When a new file is added to the monitored directory, Wazuh generates an alert (`
 
 Now, create a file in the monitored directory and you should see an `ID 554` on the Wazuh Threat Hunting dashboard.
 
-
-
-### Test
 To trigger a positive match in MISP, add any of the `eicar.com` hashes to your MISP instance and publish the event.
 
 * **MD5:** `44d88612fea8a8f36de82e1278abb02f`
@@ -843,7 +840,7 @@ If we go to the _Threat intelligence_ → _Threat Hunting_ → _Events_ panel in
 Done!
 
 
-#### Monitor network IOCs
+### Suricata - Monitor network IOCs
 
 FIM only sees files on disk. To catch malicious **network** activity — connections to
 known-bad IPs or lookups of known-bad domains — we need something that inspects traffic.
@@ -1048,6 +1045,231 @@ curl -s https://circl.lu > /dev/null
 
 
 Additionally, you can leverage Wazuh _Active Response_ module to act on this alert and automatically delete or run additional actions. Read more about this [here](https://documentation.wazuh.com/current/user-manual/capabilities/active-response/index.html) and check [this tutorial](https://wazuh.com/blog/detecting-and-responding-to-malicious-files-using-cdb-lists-and-active-response/). 
+
+
+### Zeek - Monitor network IOCs
+
+Suricata (above) ships every DNS/HTTP/flow record to the Wazuh Agent and lets the manager
+run a MISP lookup per event. [Zeek](https://zeek.org) takes the opposite approach: with its
+**Intelligence Framework** and the `zeekjs-misp` plugin it pulls the IOCs out of MISP
+*once*, holds them in memory, and matches them against live traffic itself — writing a line
+to `intel.log` only when traffic actually hits one. That means far less load on MISP (one
+periodic bulk fetch instead of a query per event), which is the same pull model the scaling
+section (§3.3) recommends. We then ship the much smaller `intel.log` to the Wazuh Agent for
+alerting.
+
+> This section assumes Zeek and the `zeekjs-misp` plugin are already installed on the Wazuh
+> Agent VM — see [INSTALLATION.md](INSTALLATION.md).
+
+**Point Zeek at MISP**
+
+The Wazuh decoder below parses Zeek's TSV logs, so JSON logging must stay off. Edit the
+site policy:
+
+```bash
+vim /opt/zeek/share/zeek/site/local.zeek
+```
+
+```
+@load zeekjs-misp
+@load frameworks/intel/seen
+
+redef LogAscii::use_json = F;                    # keep logs in TSV, not JSON
+redef ignore_checksums = T;                      # VMs offload checksums; without this Zeek
+                                                 # drops egress packets as "bad" (history 'C')
+                                                 # and never matches IOCs
+redef MISP::url = "https://192.168.56.30";
+redef MISP::api_key = "YOUR_MISP_AUTH_KEY";
+redef MISP::insecure = T;                        # lab MISP uses a self-signed cert
+redef MISP::debug = T;
+redef MISP::attributes_search_tags = {"zeek:ingest"};
+```
+
+> As with Suricata's `suricata:ingest`, tag the MISP attributes you want Zeek to enforce
+> with `zeek:ingest` so the pull stays a deliberate subset rather than every IOC in the
+> platform.
+
+> **VM checksum offloading.** On a VM the NIC fills in TCP/IP checksums *after* Zeek sees the
+> packet, so captured egress traffic looks corrupt — `conn.log` shows a `conn_state` of `OTH`
+> or `SHR` and a `C` in the `history` field. Zeek then never fires `connection_established`,
+> so the Intel framework never checks the connection and `intel.log` stays empty even though
+> the IOC is loaded. `redef ignore_checksums = T;` above fixes it. Also make sure Zeek sniffs
+> the **egress/NAT interface** (the one carrying the `10.0.2.x` traffic), since connections to
+> external bad IPs leave that way — not the host-only lab interface.
+
+Check the configuration, then deploy (this compiles the config and starts Zeek):
+
+```bash
+   /opt/zeek/bin/zeekctl check
+```
+```
+zeek scripts are ok.
+```
+
+```bash
+   /opt/zeek/bin/zeekctl deploy
+```
+```
+checking configurations ...
+installing ...
+creating policy directories ...
+installing site policies ...
+generating standalone-layout.zeek ...
+generating local-networks.zeek ...
+generating zeekctl-config.zeek ...
+generating zeekctl-config.sh ...
+stopping ...
+stopping zeek ...
+starting ...
+starting zeek ...
+```
+
+Confirm Zeek loaded the IOCs from MISP (logged because `MISP::debug = T`):
+```
+$ head -n 40 /opt/zeek/logs/current/stdout.log 
+max memory size             (kbytes, -m) unlimited
+data seg size               (kbytes, -d) unlimited
+virtual memory              (kbytes, -v) unlimited
+core file size              (blocks, -c) unlimited
+zeek-misp: Starting up zeekjs-misp
+zeek-misp: url https://192.168.56.30
+zeek-misp: api_key LHjs...
+zeek-misp: refresh_interval 120000
+zeek-misp: max_item_sightings 5n
+zeek-misp: max_item_sightings_interval 5000
+zeek-misp: Schedule for 120000...
+zeek-misp: Loading intel data through attributes search
+zeek-misp: Attribute search {"tags":["zeek:ingest"],"to_ids":1,"eventid":[],"type":"!yara,!malware-sample,!ssdeep,!pattern-in-traffic,!btc","from":1752172959}
+zeek-misp: searchAttributes done items=9140 requestMs=1088.5019226074219ms insertMs=577.0161972045898ms
+zeek-misp: Summary of attribute types
+zeek-misp:   ip-dst = 9140
+zeek-misp: Attributes search done
+zeek-misp: Schedule for 120000...
+```
+
+```bash
+$ /opt/zeek/bin/zeekctl status 
+```
+
+
+**Verify Zeek matches an IOC**
+
+Trigger a connection to an IP that is in MISP (here, a Tor exit node):
+```bash
+$ nc -z -v 185.194.93.14 80
+Connection to 185.194.93.14 80 port [tcp/http] succeeded!
+```
+
+With `MISP::debug = T` the match is also visible in `stdout.log`:
+```
+$ tail /opt/zeek/logs/current/stdout.log 
+zeek-misp: zeek-misp: Intel::match 185.194.93.14
+zeek-misp: Sightings reported 185.194.93.14
+```
+
+Check Zeek `intel.log` for alerts:
+```bash
+$ tail /opt/zeek/logs/current/intel.log 
+1783431365.209081	C6lr1p34vk57r0KIi6	10.0.2.15	56246	185.194.93.14	80	185.194.93.14	Intel::ADDR	Conn::IN_RESP	zeek	Intel::ADDR	MISP-5	-	-	-
+```
+
+**Ship `intel.log` to the Wazuh Agent**
+
+The Wazuh Agent is already installed and enrolled on this host (see §2.2). `intel.log` is
+line-based TSV, so read it with the `syslog` log format — add a localfile block to the
+agent's `ossec.conf`:
+```bash
+vim /var/ossec/etc/ossec.conf
+```
+```xml
+<ossec_config>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/opt/zeek/logs/current/intel.log</location>
+  </localfile>
+</ossec_config>
+```
+
+Restart the Wazuh Agent:
+```bash
+systemctl restart wazuh-agent
+```
+
+**Configure Wazuh to decode Zeek logs**
+
+1. Navigate to **Server management > Decoders**.
+2. Click **+ Add new decoders file**.
+3. Copy and paste the decoders below and name the file `zeek_decoders.xml`. Click **Save**.
+
+```xml
+<!-- 
+Sample Zeek TSV intel log:
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	seen.indicator	seen.indicator_type	seen.where	seen.node	matched	sources	fuid	file_mime_type	file_desc
+1759941358.849478	CrnEOT3JY2Fu6miFM	10.64.247.71	56328	8.8.8.8	80	8.8.8.8	Intel::ADDR	Conn::IN_RESP	zeek	Intel::ADDR	MISP-237	-	-	-
+-->
+
+<decoder name="zeek_tsv_intel_log">
+  <prematch>^\d+.\d+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\.*</prematch>
+</decoder>
+
+<decoder name="zeek_tsv_intel_log_fields">
+  <parent>zeek_tsv_intel_log</parent>
+  <regex>(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t</regex>
+  <order>ts, uid, srcip, srcport, dstip, dstport, seen_indicator, seen_indicator_type, seen_where, seen_node, matched, sources</order>
+</decoder>
+```
+
+**Add Wazuh rules to act on Zeek Intel logs**
+1. Navigate to **Server management > Rules**.
+
+2. Click **+ Add new rules file**.
+
+3. Copy and paste the rules below and name the file `zeek_intel_rules.xml`. Click **Save**.
+
+```xml
+<group name="zeek,ids,misp,">
+  <rule id="100900" level="0">
+    <description>Zeek alerts</description>
+    <options>no_full_log</options>
+  </rule>
+  <rule id="100908" level="12">
+    <if_sid>100900</if_sid>
+    <field name="seen_indicator">\.+</field>
+    <description>Zeek: MISP IOC Match $(seen_indicator) on connection from source host $(srcip) source port $(srcport) to destination host $(dstip) on port $(dstport)</description>
+  </rule>
+</group>
+```
+
+4. Click **Restart** to apply the changes. Click **Confirm** when prompted.
+
+**Demo**
+
+With the decoder and rule in place, trigger traffic to a known-bad IP from the Wazuh Agent
+VM and confirm the alert reaches Wazuh:
+```bash
+$ nc -z -v 185.194.93.14 80
+Connection to 185.194.93.14 80 port [tcp/http] succeeded!
+```
+
+Zeek records the match in `intel.log`:
+```
+# tail /opt/zeek/logs/current/intel.log
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	intel
+#open	2026-07-07-13-36-05
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	seen.indicator	seen.indicator_type	seen.where	seen.node	matched	sources	fuid	file_mime_type	file_desc
+#types	time	string	addr	port	addr	port	string	enum	enum	string	set[enum]	set[string]	string	string	string
+1783431365.209081	C6lr1p34vk57r0KIi6	10.0.2.15	56246	185.194.93.14	80	185.194.93.14	Intel::ADDR	Conn::IN_RESP	zeek	Intel::ADDR	MISP-5	-	-	-
+
+```
+
+The agent ships that line and rule `100908` fires. Check it in the Wazuh dashboard under
+**Threat Hunting**:
+> Tip: Filter by `rule.id:100908`
+
 
 ### Debugging tips
 

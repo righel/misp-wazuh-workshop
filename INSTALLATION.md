@@ -355,6 +355,156 @@ cd /usr/local/bin/yara-X.X.X/
 sudo ./bootstrap.sh && sudo ./configure && sudo make && sudo make install && sudo make check
 ```
 
+### 3.3 - Install Suricata
+
+Suricata runs on this same agent host and inspects the **host-only lab interface**
+(`enp0s8`, `192.168.56.20`), so it sees the lab traffic used in the
+[Log4Shell scenario](LOG4SHELL.md) and the MISP IoC matching described in
+[TUTORIAL.md](TUTORIAL.md) §4.
+
+1. Install a recent Suricata from the official OISF stable PPA (the Ubuntu-shipped
+   package lags behind):
+   ```bash
+   apt-get install -y software-properties-common
+   add-apt-repository -y ppa:oisf/suricata-stable
+   apt-get update
+   apt-get install -y suricata jq
+   ```
+
+2. Point Suricata at the host-only interface and set the lab as `HOME_NET`. Edit
+   `/etc/suricata/suricata.yaml`:
+   ```bash
+   vim /etc/suricata/suricata.yaml
+   ```
+   ```yaml
+   vars:
+     address-groups:
+       HOME_NET: "[192.168.56.0/24]"
+
+   af-packet:
+     - interface: enp0s8      # host-only lab interface
+   ```
+
+   > You can also set the capture interface once at install time by editing
+   > `/etc/default/suricata` (`IFACE=enp0s8`), which the systemd unit reads on start.
+
+3. Fetch the ruleset and confirm the config parses:
+   ```bash
+   suricata-update                      # downloads the ET Open ruleset into /var/lib/suricata/rules/
+   suricata -T -c /etc/suricata/suricata.yaml -v   # -T = test config, must report "Configuration provided was successfully loaded"
+   ```
+
+4. Enable the service so it starts now and on every boot, then confirm it is sniffing
+   and writing events:
+   ```bash
+   systemctl enable --now suricata
+   systemctl status suricata --no-pager           # confirm active (running)
+   tail -f /var/log/suricata/eve.json | jq        # confirm JSON events are being written
+   ```
+
+The `/var/lib/suricata/rules/` directory and `/var/log/suricata/eve.json` output created
+here are exactly what the MISP integration in [TUTORIAL.md](TUTORIAL.md) §4 builds on
+(the `misp-iocs-ips.lst` dataset, `misp.rules`, and the `eve-log` output).
+
+More info:
+* https://docs.suricata.io/en/latest/install.html
+
+### 3.4 - Install Zeek
+
+Zeek runs on this same agent host and, like Suricata, watches the **host-only lab
+interface** (`enp0s8`, `192.168.56.20`). It produces rich, protocol-aware connection logs
+(`conn.log`, `dns.log`, `http.log`, …) that complement Suricata's alerts and feed the
+network IOC monitoring described in [TUTORIAL.md](TUTORIAL.md) ("Zeek - Monitor network
+IOCs").
+
+1. Install Zeek from the official OpenSUSE Build Service repository (the LTS build for
+   Ubuntu 24.04 "noble"):
+   ```bash
+   echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_24.04/ /' \
+     | tee /etc/apt/sources.list.d/security:zeek.list
+   curl -fsSL https://download.opensuse.org/repositories/security:zeek/xUbuntu_24.04/Release.key \
+     | gpg --dearmor | tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null
+   apt-get update
+   apt-get install -y zeek-lts
+   ```
+
+   > Zeek installs under `/opt/zeek`. Add it to your `PATH` for the current session with
+   > `export PATH=/opt/zeek/bin:$PATH` (or append it to `/etc/profile.d/zeek.sh`).
+
+2. Point Zeek at the interface that carries the traffic you want to inspect and set the
+   lab as the local network. Edit `/opt/zeek/etc/node.cfg`:
+   ```bash
+   vim /opt/zeek/etc/node.cfg
+   ```
+   ```ini
+   [zeek]
+   type=standalone
+   host=localhost
+   interface=enp0s3          # egress/NAT interface — carries connections to external IPs
+   ```
+
+   > Use the **egress** interface (`enp0s3`, the one with the `10.0.2.x` NAT address) if you
+   > want to detect connections to *external* malicious IPs (e.g. the MISP IOC demo in the
+   > tutorial) — that traffic leaves via NAT, not the host-only `enp0s8`. Watch `enp0s8`
+   > instead only if you care about VM-to-VM lab traffic.
+
+   Then declare the local networks in `/opt/zeek/etc/networks.cfg`:
+   ```ini
+   192.168.56.0/24    Lab host-only network
+   10.0.2.0/24        VirtualBox NAT network
+   ```
+
+3. Install the [`zeekjs-misp`](https://github.com/awelzel/zeekjs-misp) plugin, which the
+   MISP integration in [TUTORIAL.md](TUTORIAL.md) ("Zeek - Monitor network IOCs") relies on
+   to pull IOCs from MISP into Zeek's Intel framework. It is a `zkg` package built on
+   **ZeekJS** (Zeek's JavaScript support), so Node.js and its headers are required to build
+   it:
+   ```bash
+   /opt/zeek/bin/zkg autoconfig                     # point zkg at this Zeek install (once)
+   apt-get install -y nodejs libnode-dev cmake g++  # ZeekJS build dependencies
+   # --force skips the confirmation prompts; --user-var supplies the zeekjs dependency's
+   # nodejs_root_dir (blank = auto-detect). Do NOT `echo yes |` this — zkg prompts twice
+   # and a one-line pipe hits EOF on the second prompt.
+   /opt/zeek/bin/zkg install --force --user-var nodejs_root_dir= zeekjs-misp
+   ```
+   Confirm the package is installed and loadable:
+   ```bash
+   /opt/zeek/bin/zkg list
+   /opt/zeek/bin/zeek -e '@load zeekjs-misp' -e 'print "ok"'   # prints "ok", no "can't find" error
+   ```
+
+   > **Build needs RAM.** Compiling the `zeekjs` engine embeds the V8/libnode headers and
+   > can push the compiler past ~1&nbsp;GB. On a small VM the build dies with
+   > `c++: fatal error: Killed signal terminated program cc1plus` (the OOM killer). Give the
+   > VM ≥4&nbsp;GB, or add temporary swap, then re-run the `zkg install`:
+   > ```bash
+   > fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+   > ```
+
+   > The MISP connection settings (`MISP::url`, `MISP::api_key`, `zeek:ingest` tag filter,
+   > …) are added to `/opt/zeek/share/zeek/site/local.zeek` in the tutorial, not here.
+
+4. Check the config, then deploy (this compiles the config and starts the Zeek process):
+   ```bash
+   /opt/zeek/bin/zeekctl check
+   /opt/zeek/bin/zeekctl deploy
+   /opt/zeek/bin/zeekctl status      # confirm the 'zeek' node is running
+   ```
+
+5. Confirm logs are being written to `/opt/zeek/logs/current/`:
+   ```bash
+   ls /opt/zeek/logs/current/
+   tail -f /opt/zeek/logs/current/conn.log
+   ```
+
+`zeekctl deploy` also installs a cron entry (via `zeekctl cron`) that restarts Zeek if it
+dies and rotates logs, so it survives reboots once deployed. The logs under
+`/opt/zeek/logs/` are what the network IOC monitoring in [TUTORIAL.md](TUTORIAL.md) builds
+on.
+
+More info:
+* https://docs.zeek.org/en/master/install.html
+
 ## 4 - Wazuh <-> MISP integration script installation
 
 1. Pull the integration script into the Wazuh integrations directory

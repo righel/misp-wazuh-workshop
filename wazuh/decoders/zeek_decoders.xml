@@ -1,0 +1,15 @@
+<!-- 
+Sample Zeek TSV intel log:
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	seen.indicator	seen.indicator_type	seen.where	seen.node	matched	sources	fuid	file_mime_type	file_desc
+1759941358.849478	CrnEOT3JY2Fu6miFM	10.64.247.71	56328	8.8.8.8	80	8.8.8.8	Intel::ADDR	Conn::IN_RESP	zeek	Intel::ADDR	MISP-237	-	-	-
+-->
+
+<decoder name="zeek_tsv_intel_log">
+  <prematch>^\d+.\d+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\S+\t\.*</prematch>
+</decoder>
+
+<decoder name="zeek_tsv_intel_log_fields">
+  <parent>zeek_tsv_intel_log</parent>
+  <regex>(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t(\S+)\t</regex>
+  <order>ts, uid, srcip, srcport, dstip, dstport, seen_indicator, seen_indicator_type, seen_where, seen_node, matched, sources</order>
+</decoder>
