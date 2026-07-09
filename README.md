@@ -37,6 +37,7 @@ instead.
 
 | Document | What it covers |
 |----------|----------------|
+| **[OVA-IMPORT.md](OVA-IMPORT.md)** | Import the pre-configured `.ova`, plus the IP addresses and default credentials of every VM. Start here if you have the image. |
 | **[TUTORIAL.md](TUTORIAL.md)** | The main walkthrough — start here. Explores MISP (orgs, tags, feeds, server sync, PyMISP scripting, enrichment modules) then deploys Wazuh and wires the two together. |
 | **[INSTALLATION.md](INSTALLATION.md)** | How to build the lab from scratch: importing base VMs, host-only network, static IPs, and installing MISP (`misp-docker`) and Wazuh. Skip this if you import the `.ova`. |
 
