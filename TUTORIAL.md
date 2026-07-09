@@ -35,19 +35,6 @@ Part 1 sets up and explores MISP; Part 2 deploys Wazuh and wires the two togethe
 192.168.56.50   flowintel VM
 ```
 
-## Using lab `.ova`
-
-Download `wazuh-misp-lab.ova` and run:
-
-```bash
-VBoxManage hostonlyif create
-VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.56.1 --netmask 255.255.255.0
-VBoxManage dhcpserver remove --ifname vboxnet0 2>/dev/null || true
-VBoxManage import wazuh-misp-lab.ova
-```
-
-Open Oracle Virtual Box and start the VMs.
-
 ## 1 - MISP
 
 ### 1.1 - Accessing MISP
