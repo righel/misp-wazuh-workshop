@@ -29,7 +29,8 @@ The lab runs four VirtualBox VMs on a host-only network (`vboxnet0`):
 
 ## Getting started
 
-Download the pre-configured `.ova` file containing the 4 VMs **<TODO_INSERT_OVA_LINK>**.
+Download the pre-configured `.ova` file containing the 4 VMs:
+* https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova
 
 The lab is distributed as a pre-configured `.ova` image, so you can go straight to the
 walkthrough. If you'd rather build everything from scratch, follow the installation guide
