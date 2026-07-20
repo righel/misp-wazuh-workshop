@@ -20,7 +20,7 @@
 
 Download the pre-configured lab image, `wazuh-misp-lab.ova`, which bundles all four VMs:
 
-* [**<TODO_INSERT_OVA_LINK>**](https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova)
+* https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova
 
 ## 2 - Create the host-only network
 
