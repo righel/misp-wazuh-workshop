@@ -1,0 +1,249 @@
+/* @theme circl */
+/*
+ * CIRCL / Metropolis theme for Marp.
+ * Recreates the LaTeX Beamer "metropolis" theme with CIRCL's color overrides
+ * (see MISP/misp-training beamerthemecircl.sty).
+ *
+ * Colors:
+ *   circlBlue #456F84  — frame-title bar + body text (LaTeX mDarkTeal override)
+ *   circlRed  #EE2338  — progress bar / accents
+ *   bg        #FAFAFA  — light background (Metropolis "light")
+ *   orange    #EB811B  — alerted text ; green #14B03D — example text
+ *
+ * Fonts: Fira Sans / Fira Mono (Metropolis defaults). Imported from Google
+ * Fonts when rendering online; falls back to a system sans stack offline.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fira+Mono:wght@400;500&display=swap');
+
+:root {
+  --circl-blue: #456F84;
+  --circl-blue-dark: #37596b;
+  --circl-red: #EE2338;
+  --circl-bg: #FAFAFA;
+  --circl-orange: #EB811B;
+  --circl-green: #14B03D;
+  --circl-muted: #8a9aa2;
+}
+
+/* ---------- base frame ---------- */
+section {
+  width: 1280px;
+  height: 720px;
+  padding: 50px 64px;
+  font-family: 'Fira Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 1.4;
+  color: var(--circl-blue);
+  background-color: var(--circl-bg);
+  letter-spacing: 0.1px;
+}
+
+/* ---------- frame title: full-bleed circlBlue bar + red progress line ---------- */
+section h1 {
+  margin: -50px -64px 34px -64px;
+  padding: 24px 64px 20px 64px;
+  background: var(--circl-blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 1.1;
+  letter-spacing: 0.2px;
+  border-bottom: 4px solid var(--circl-red);
+}
+
+section h2 {
+  color: var(--circl-blue-dark);
+  font-weight: 600;
+  font-size: 28px;
+  margin: 0.2em 0 0.4em;
+}
+
+/* ---------- lists: Metropolis-style dash markers in circlRed ---------- */
+section ul,
+section ol {
+  padding-left: 1.3em;
+}
+section ul {
+  list-style: none;
+}
+section ul > li {
+  position: relative;
+  margin: 0.42em 0;
+}
+section ul > li::before {
+  content: '';
+  position: absolute;
+  left: -1.15em;
+  top: 0.62em;
+  width: 0.5em;
+  height: 0.16em;
+  background: var(--circl-red);
+}
+section ul ul > li::before {
+  background: var(--circl-muted);
+}
+section li { margin: 0.42em 0; }
+
+section strong { color: var(--circl-blue-dark); font-weight: 600; }
+section em { color: var(--circl-orange); font-style: normal; font-weight: 500; }
+section a { color: var(--circl-blue); text-decoration: none; border-bottom: 1px solid var(--circl-red); }
+
+/* ---------- callout (blockquote) ---------- */
+section blockquote {
+  margin: 0.6em 0 0;
+  padding: 0.5em 0.9em;
+  border-left: 4px solid var(--circl-red);
+  background: rgba(69, 111, 132, 0.06);
+  color: var(--circl-blue-dark);
+  font-size: 0.9em;
+}
+section blockquote::before { content: none; }
+
+/* ---------- code ---------- */
+section code {
+  font-family: 'Fira Mono', ui-monospace, monospace;
+  font-size: 0.85em;
+  background: rgba(69, 111, 132, 0.10);
+  padding: 0.08em 0.32em;
+  border-radius: 3px;
+}
+section pre {
+  background: #2b3a41;
+  border-radius: 4px;
+  padding: 0.8em 1em;
+}
+section pre code {
+  background: none;
+  color: #eceff1;
+  font-size: 0.72em;
+  line-height: 1.45;
+}
+
+section table { font-size: 0.8em; border-collapse: collapse; }
+section th { background: var(--circl-blue); color: #fff; padding: 0.4em 0.7em; text-align: left; }
+section td { border-bottom: 1px solid #dfe4e6; padding: 0.35em 0.7em; }
+
+/* ---------- footer (phase) + fraction page number ---------- */
+section footer {
+  position: absolute;
+  left: 64px;
+  right: auto;
+  bottom: 19px;
+  text-align: left;
+  color: var(--circl-muted);
+  font-size: 15px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+section::after {
+  right: 64px;
+  bottom: 20px;
+  color: var(--circl-muted);
+  font-size: 15px;
+  font-weight: 400;
+  content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
+}
+
+/* TLP:CLEAR badge (FIRST TLP 2.0 style: white on black), bottom-center of every slide */
+section::before {
+  content: 'TLP:CLEAR';
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  font-family: 'Fira Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  padding: 2px 9px;
+  border-radius: 2px;
+}
+
+/* ============ TITLE SLIDE (class: title) ============ */
+section.title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 80px;
+}
+section.title h1 {
+  margin: 0;
+  padding: 0 0 0.25em 0;
+  background: none;
+  color: var(--circl-blue);
+  border: none;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.08;
+}
+section.title h2 {
+  margin: 0.4em 0 0;
+  color: var(--circl-muted);
+  font-weight: 300;
+  font-size: 26px;
+  padding-top: 0.6em;
+  border-top: 4px solid var(--circl-red);
+  display: inline-block;
+}
+section.title ul { list-style: none; padding: 0; margin-top: 1.6em; font-size: 20px; color: var(--circl-muted); }
+section.title ul > li::before { content: none; }
+section.title::after { content: none; }
+/* CIRCL logo (from an image placed on the title slide, top-right) */
+section.title img {
+  position: absolute;
+  top: 48px;
+  right: 80px;
+  width: 300px;
+  height: auto;
+}
+
+/* ============ SLIDE WITH A CORNER LOGO (class: logo-br) ============ */
+section.logo-br img {
+  position: absolute;
+  right: 72px;
+  bottom: 96px;
+  width: 300px;
+  height: auto;
+}
+
+/* ============ SECTION DIVIDER (class: section) ============ */
+section.section {
+  background: var(--circl-blue);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+section.section h1 {
+  margin: 0;
+  padding: 0.35em 0 0 0;
+  background: none;
+  color: #fff;
+  border: none;
+  border-top: 4px solid var(--circl-red);
+  display: inline-block;
+  font-size: 46px;
+}
+section.section, section.section h2 { color: #fff; }
+section.section footer,
+section.section::after { color: rgba(255, 255, 255, 0.7); }
+
+/* ============ STANDOUT (class: standout) — big centered statement ============ */
+section.standout {
+  background: var(--circl-blue-dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 600;
+}
+section.standout h1 { background: none; border: none; margin: 0; padding: 0; color: #fff; }
+section.standout footer,
+section.standout::after { color: rgba(255, 255, 255, 0.6); }

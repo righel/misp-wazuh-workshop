@@ -1,0 +1,5 @@
+# Marp CLI config for the workshop decks.
+# Registers the custom CIRCL theme so `theme: circl` works in any deck here.
+themeSet: ./themes
+html: true
+allowLocalFiles: true
