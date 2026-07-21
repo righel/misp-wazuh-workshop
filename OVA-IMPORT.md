@@ -20,7 +20,19 @@
 
 Download the pre-configured lab image, `wazuh-misp-lab.ova`, which bundles all four VMs:
 
-* https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova
+| VM | Size | Download |
+| --- | --- | --- |
+| MISP Full Lab (4 VMs) | 14 GB GB | https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova |
+
+If you want to download the individual VMs:
+
+| VM | Size | Download |
+| --- | --- | --- |
+| MISP | 3.7 GB | https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/misp.ova |
+| Wazuh Manager | 4.9 GB | https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-manager.ova |
+| Wazuh Agent | 1.9 GB | https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-agent.ova |
+| Flowintel | 3.6 GB | https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/flowintel.ova |
+
 
 ## 2 - Create the host-only network
 
