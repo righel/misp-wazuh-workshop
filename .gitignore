@@ -39,3 +39,5 @@ secrets.py
 .idea/
 .DS_Store
 *.swp
+
+slides/presenter
