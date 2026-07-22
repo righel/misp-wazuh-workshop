@@ -11,6 +11,14 @@
 
 ## Requirements
 
+The following requirements have to be in place before the VMs can be imported into a host operating system:
+
+  * The host operating system must be 64-bit with `x86_64/AMD64` architecture.
+
+  * Enable hardware virtualization in the host firmware.
+
+  * Install a virtualization platform, such as VirtualBox, on the host system.
+
 * [Oracle VirtualBox](https://www.virtualbox.org/) (with the `VBoxManage` CLI, which ships
   with it).
 * Enough free resources for four VMs running at once — roughly **16 GB RAM** and

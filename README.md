@@ -29,6 +29,16 @@ The lab runs four VirtualBox VMs on a host-only network (`vboxnet0`):
 
 ## Getting started
 
+### Requirements
+
+The following requirements have to be in place before the VMs can be imported into a host operating system:
+
+  * The host operating system must be 64-bit with `x86_64/AMD64` architecture.
+
+  * Enable hardware virtualization in the host firmware.
+
+  * Install a virtualization platform, such as VirtualBox, on the host system.
+
 Download the pre-configured `.ova` file containing the 4 VMs:
 * https://pub-e6181ccc7739447d9ff21c500868f129.r2.dev/wazuh-misp-lab.ova
 
