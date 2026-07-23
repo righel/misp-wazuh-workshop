@@ -25,6 +25,9 @@ footer: "Scaling the Integration"
 
 # The starting point
 
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+<div>
+
 **query-per-event integration.**
 
 - Every matching alert is handed to `custom-misp.py`.
@@ -32,6 +35,24 @@ footer: "Scaling the Integration"
 - Fine for a few lab agents — it does **not** scale.
 
 > Lookup volume tracks *alert* volume, not the number of real matches.
+
+</div>
+<div>
+
+```xml
+<ossec_config>
+    <integration>
+    <name>custom-misp.py</name>
+    <group>syscheck</group>
+    <hook_url>https://YOUR_MISP_IP:PORT/</hook_url>
+    <api_key>YOUR_API_KEY</api_key>
+    <alert_format>json</alert_format>
+    </integration>
+</ossec_config>
+```
+
+</div>
+</div>
 
 ---
 
@@ -50,13 +71,34 @@ footer: "Scaling the Integration"
 
 # Reduce the lookups
 
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+<div>
+
 **The cheapest win is not making the query at all.**
 
 - **Tighten the trigger** — narrow the `<group>` filter; only high-value alerts.
 - **Reduce noise at the source** — scope FIM directories, tune Suricata logging.
 - **Prefer specific IOC types** — hashes/domains over raw IPs; drop what you don't act on.
 
+
+</div>
+<div>
+
+```xml
+<syscheck>
+  <!-- report added files -->
+  <alert_new_files>yes</alert_new_files>
+  <!-- scope dirs + restrict to executables -->
+  <directories check_all="yes" realtime="yes"
+    restrict="\.exe$|\.dll$|\.sh$|\.bin$">/usr/local/bin
+  </directories>
+</syscheck>
+```
+
 > Lowers load, but keeps the per-event, single-instance dependency.
+</div>
+</div>
+
 
 ---
 
@@ -86,27 +128,6 @@ footer: "Scaling the Integration"
 
 ---
 
-# CDB list in practice
-
-**Export → reference in a rule → compile & reload.**
-
-```xml
-<rule id="100700" level="12">
-  <list field="data.dest_ip"
-        lookup="address_match_key">etc/lists/misp-ip-iocs</list>
-  <description>MISP IoC (offline) - $(data.dest_ip) is known-malicious</description>
-</rule>
-```
-
-```bash
-/var/ossec/bin/wazuh-makelists
-systemctl restart wazuh-manager
-```
-
-> Keep query-per-event for the few low-volume, high-value alert groups.
-
----
-
 # Insulate the MISP instance
 
 **Treat MISP as a shared production service.**
@@ -116,16 +137,6 @@ systemctl restart wazuh-manager
 - Publish IOCs as a **feed/export** that consumers pull, not live API hits.
 
 > Keep the primary instance responsive for analysts on the web UI.
-
----
-
-<!-- _class: standout -->
-<!-- _footer: "" -->
-
-# If lookup volume scales with agent count, you have a scaling problem.
-
-Move matching off the per-event path — keep live queries for where
-up-to-the-second context justifies the call.
 
 ---
 
