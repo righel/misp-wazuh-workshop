@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "misp": {
+            "command": "misp-mcp",
+            "env": {
+                "MISP_URL": "https://YOUR_MISP_URL",
+                "MISP_API_KEY": "YOUR_MISP_API_KEY",
+                "MISP_VERIFYCERT": "false"
+            }
+        }
+    }
+}
