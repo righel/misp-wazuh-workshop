@@ -827,6 +827,19 @@ If we go to the _Threat intelligence_ → _Threat Hunting_ → _Events_ panel in
 Done!
 
 
+#### Debugging
+
+Check Wazuh MISP integration logs:
+```
+[root@wazuh-server wazuh-user]# tail -f /var/log/wazuh-misp/integrations.log
+2026-07-24 13:54:43,806 [INFO] wazuh-misp-integration: MISP match found for IOC value '275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f'
+2026-07-24 13:54:43,806 [INFO] wazuh-misp-integration: MISP match found for IOC value '44d88612fea8a8f36de82e1278abb02f'
+2026-07-24 13:54:43,806 [INFO] wazuh-misp-integration: Sent enriched event to Wazuh socket
+2026-07-24 13:54:44,278 [INFO] wazuh-misp-integration: MISP query successful for '44d88612fea8a8f36de82e1278abb02f', status 200
+2026-07-24 13:54:44,309 [INFO] wazuh-misp-integration: MISP query successful for '3395856ce81f2b7382dee72602f798b642f14140', status 200
+```
+
+
 ### Suricata - Monitor network IOCs
 
 FIM only sees files on disk. To catch malicious **network** activity — connections to
@@ -898,10 +911,12 @@ sudo nano /var/ossec/etc/ossec.conf
 ```
 
 ```xml
-<localfile>
-  <log_format>json</log_format>
-  <location>/var/log/suricata/eve.json</location>
-</localfile>
+<ossec_config>
+  <localfile>
+    <log_format>json</log_format>
+    <location>/var/log/suricata/eve.json</location>
+  </localfile>
+</ossec_config>
 ```
 
 Restart Wazuh Agent:
@@ -928,7 +943,7 @@ SUPPORTED_KEYS = [
     ("url",    ["url", "source_url", "TargetURL", "download_url", "http_url", "http.url"]),
     ("domain", ["domain", "hostname", "base_domain", "fqdn", "TargetDestination", "Fqdn_s", "win.eventdata.queryName", "dns.rrname", "http.hostname", "tls.sni"]),
 ]
-``
+```
 
 Extend `custom_misp_rules.xml` rules files in Wazuh:
 
@@ -1212,6 +1227,7 @@ Sample Zeek TSV intel log:
 ```xml
 <group name="zeek,ids,misp,">
   <rule id="100900" level="0">
+    <decoded_as>zeek_tsv_intel_log</decoded_as>
     <description>Zeek alerts</description>
     <options>no_full_log</options>
   </rule>
