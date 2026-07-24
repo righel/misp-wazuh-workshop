@@ -26,6 +26,7 @@ misp = pymisp.PyMISP(
 # /attributes/restSearch
 attributes = misp.search(
     "attributes",
+    # value="8.8.8.8",
     # tags=["tlp:white", "tlp:clear"],
     type_attribute=["ip-src", "ip-dst"],
     to_ids=True,
