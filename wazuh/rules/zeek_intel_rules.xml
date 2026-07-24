@@ -1,5 +1,6 @@
 <group name="zeek,ids,misp,">
   <rule id="100900" level="0">
+    <decoded_as>zeek_tsv_intel_log</decoded_as>
     <description>Zeek alerts</description>
     <options>no_full_log</options>
   </rule>
